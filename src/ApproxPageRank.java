@@ -67,6 +67,21 @@ public class ApproxPageRank {
 		
 	}
 	
+	//compute boundary contribution of a node w.r.t. a set S
+	public static double computeBoundaryConstribution(String node, HashSet<String> S, HashMap<String,LinkedList<String>> neighbors){
+		
+		double boundaryContribution = 0D;
+		LinkedList<String> nodeNeighbors = neighbors.get(node); 
+		for(String neighbor : nodeNeighbors){
+			if(!S.contains(neighbor)){
+				boundaryContribution++;
+			}
+		}
+		
+		// return conductance
+		return boundaryContribution;
+	}
+	
 	
 	
 	public static void main(String[] args) {
@@ -116,9 +131,11 @@ public class ApproxPageRank {
 					//update node's residue
 					residual.put(n, (1D - alpha) * nodeR / 2D);
 					//update neighbors' residue
-					for(String neighbor : neighbors.get(n)){
+					LinkedList<String> nodeNeighbors = neighbors.get(n);
+					double nodeD = neighbors.get(n).size();
+					for(String neighbor : nodeNeighbors){
 						double neighborR = residual.containsKey(neighbor) ? residual.get(neighbor) : 0D;
-						residual.put(neighbor, neighborR + (1D - alpha) * nodeR / (2D * neighbors.get(n).size()) );
+						residual.put(neighbor, neighborR + (1D - alpha) * nodeR / (2D * nodeD) );
 					}
 				}
 				
@@ -147,7 +164,7 @@ public class ApproxPageRank {
 			//cache candidates
 			cacheNodeNeighborsFromFile(inputPath, nodesToBeCached, neighbors);
 			nodesToBeCached.clear();
-			System.out.println("reading file");
+			//System.out.println("reading file");
 			
 			//update list using cached nodes
 			for(String n : neighbors.keySet()){
@@ -162,17 +179,18 @@ public class ApproxPageRank {
 		}
 		
 		//print result
+		/*
 		for(String n : pageRank.keySet()){
 			System.out.println(n+"\t"+pageRank.get(n).toString());
 		}
+		*/
 		
-		System.out.println("\n------------------------------------------------------------\n");
+		//System.out.println("\n------------------------------------------------------------\n");
 		
 		
 		//BUILD LOW-CONDUCTANCE SUBGRAPH
 		//cache all pages on the PageRank list
 		nodesToBeCached.clear();
-		neighbors.clear();
 		for(String n : pageRank.keySet()){
 			if(!neighbors.containsKey(n)){
 				nodesToBeCached.add(n);
@@ -188,7 +206,14 @@ public class ApproxPageRank {
 		S.add(seed);
 		SStar.addAll(S);
 		
-		for(String n : neighbors.keySet()){
+		//compute initial conductances
+		double totalVolume = neighbors.get(seed).size();
+		double totalBoundary = computeBoundaryConstribution(seed, S, neighbors);
+		double conductanceS = totalBoundary / totalVolume;
+		double conductanceSStar = conductanceS;
+		
+		
+		for(String n : pageRank.keySet()){
 			
 			// disregard seed
 			if(n.equals(seed)){
@@ -198,14 +223,16 @@ public class ApproxPageRank {
 			// add node to S
 			S.add(n);
 			
+			//update conductance
+			totalVolume += neighbors.get(n).size();
+			totalBoundary += computeBoundaryConstribution(n, S, neighbors);
+			conductanceS = totalBoundary / totalVolume;
+			
 			// if Phi(S) < Phi(S*) => S* <- S
-			double conductanceS = computeConductance(S,neighbors);
-			double conductanceSStar = computeConductance(SStar,neighbors);
 			if(conductanceS < conductanceSStar){
 				SStar.addAll(S);
+				conductanceSStar = conductanceS;
 			}
-			System.out.println("S: " + String.valueOf(S.size()));
-			System.out.println("S*: " + String.valueOf(SStar.size()));
 			
 		}
 		
