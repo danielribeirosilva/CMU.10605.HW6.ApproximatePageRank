@@ -6,18 +6,21 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.PriorityQueue;
 import java.util.Map.Entry;
 
 
 
 public class ApproxPageRank {
 	
+	private static BufferedReader br;
+
 	// from a set of selected nodes, get their neighbors from file 
 	// and add them as a list to the provided HashMap
 	public static void cacheNodeNeighborsFromFile(String inputPath, HashSet<String> nodesToBeCached, HashMap<String,String[]> neighbors){
 		
 		try {
-			BufferedReader br = new BufferedReader(new FileReader(inputPath));
+			br = new BufferedReader(new FileReader(inputPath));
 			String line;
 			
 			while( (line = br.readLine()) != null){
@@ -28,6 +31,10 @@ public class ApproxPageRank {
 				if(nodesToBeCached.contains(node)){
 					String[] neighborsArray = Arrays.copyOfRange(nodeAndNeighbors,1,nodeAndNeighbors.length);
 					neighbors.put(node, neighborsArray);
+					nodesToBeCached.remove(node);
+					if(nodesToBeCached.isEmpty()){
+						return;
+					}
 				}
 			}
 			
@@ -215,8 +222,16 @@ public class ApproxPageRank {
 		double conductanceS = totalBoundary / totalVolume;
 		double conductanceSStar = conductanceS;
 		
+		//sort nodes by decresing pagerank
+		PriorityQueue<Pair> pq = new PriorityQueue<Pair>();
+		for(Entry<String, Double> pair : pageRank.entrySet()){
+			pq.add(new Pair(pair.getKey(),pair.getValue()));
+		}
 		
-		for(String n : pageRank.keySet()){
+		int pqSize = pq.size();
+		for(int i=0; i<pqSize; i++){
+			
+			String n = pq.poll().node;
 			
 			// disregard seed
 			if(n.equals(seed)){
